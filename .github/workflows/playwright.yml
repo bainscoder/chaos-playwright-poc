@@ -1,23 +1,15 @@
-name: Playwright Tests
+name: Playwright & Kubernetes
 
 on:
   push:
     branches:
       - master
 
-  pull_request:
-    branches:
-      - master
-
   workflow_dispatch:
 
 jobs:
-  playwright-tests:
+  deploy:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: automation
 
     steps:
       - name: Checkout Repository
@@ -25,34 +17,25 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: automation/package-lock.json
+      - name: Start Minikube
+        uses: medyagh/setup-minikube@latest
 
-      - name: Install Dependencies
-        run: npm ci
+      - name: Check Cluster
+        run: |
+          kubectl get nodes
 
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium
+      - name: Deploy Online Boutique
+        run: |
+          kubectl apply -f app/online-boutique/release/kubernetes-manifests.yaml
 
-      - name: Run Playwright Tests
-        run: npx playwright test
+      - name: Wait for Pods
+        run: |
+          kubectl wait --for=condition=Ready pod --all --timeout=600s
 
-      - name: Upload Playwright Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: automation/playwright-report
-          retention-days: 30
+      - name: Verify Pods
+        run: |
+          kubectl get pods
 
-      - name: Upload Test Results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: automation/test-results
-          retention-days: 30
+      - name: Verify Services
+        run: |
+          kubectl get svc
