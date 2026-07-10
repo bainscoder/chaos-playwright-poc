@@ -1,0 +1,21 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: cpu-stress
+  namespace: default
+spec:
+  mode: one
+
+  selector:
+    namespaces:
+      - default
+
+    labelSelectors:
+      app: cartservice
+
+  stressors:
+    cpu:
+      workers: 1
+      load: 80
+
+  duration: "60s"
