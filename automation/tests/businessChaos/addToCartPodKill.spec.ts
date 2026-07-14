@@ -2,22 +2,27 @@ import test from "../../fixtures/pageObject";
 import { expect } from "@playwright/test";
 import { ChaosUtils } from "../../utils/chaosUtils";
 
-test.describe("Pod Kill Chaos Tests", () => {
+test.describe("Business Resilience - Pod Kill", () => {
   test.setTimeout(180000);
 
-  test("Verify application recovers after Pod Kill", async ({ home, page }) => {
+  test("Verify user can add product to cart after Pod recovery", async ({
+    home,
+    product,
+    cart,
+    page,
+  }) => {
     try {
       // Verify application before chaos
       await home.navigateToHomePage();
       await home.verifyHomePageLoaded();
 
-      // Kill cartservice pod
+      // Kill the cartservice pod
       ChaosUtils.applyPodKill();
 
-      // Wait until Kubernetes recreates the pod
+      // Wait for Kubernetes to recreate the pod
       ChaosUtils.waitForCartServiceRecovery();
 
-      // Retry until the application is healthy again
+      // Wait until the application is healthy again
       await expect(async () => {
         await page.reload();
         await home.verifyHomePageLoaded();
@@ -25,6 +30,17 @@ test.describe("Pod Kill Chaos Tests", () => {
         timeout: 120000,
         intervals: [3000],
       });
+
+      // Business flow after recovery
+      await home.openFirstProduct();
+
+      await product.verifyProductPageLoaded();
+
+      await product.addProductToCart();
+
+      await cart.verifyCartPageLoaded();
+
+      await cart.verifyProductAdded();
 
     } finally {
       ChaosUtils.removePodKill();
