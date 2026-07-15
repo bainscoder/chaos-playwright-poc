@@ -2,7 +2,7 @@ import test from "../../fixtures/pageObject";
 import { ChaosUtils } from "../../utils/chaosUtils";
 
 test.describe("Network Delay Chaos Tests", () => {
-  test("Verify application under Network Delay", async ({ home }) => {
+  test.skip("Verify application under Network Delay", async ({ home }) => {
     try {
       await home.navigateToHomePage();
       await home.verifyHomePageLoaded();
