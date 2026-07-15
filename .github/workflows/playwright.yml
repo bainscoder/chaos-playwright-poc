@@ -1,4 +1,122 @@
-name: Playwright Kubernetes Tests
+# name: Playwright Kubernetes Tests
+
+# on:
+#   push:
+#     branches:
+#       - master
+
+#   pull_request:
+#     branches:
+#       - master
+
+#   workflow_dispatch:
+
+# jobs:
+#   playwright-tests:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       # Checkout Repository
+#       - name: Checkout Repository
+#         uses: actions/checkout@v4
+#         with:
+#           submodules: recursive
+
+#       # Start Minikube
+#       - name: Start Minikube
+#         uses: medyagh/setup-minikube@latest
+
+#       # Verify Cluster
+#       - name: Verify Cluster
+#         run: kubectl get nodes
+
+#       # Deploy Online Boutique
+#       - name: Deploy Online Boutique
+#         run: |
+#           kubectl apply -f app/online-boutique/release/kubernetes-manifests.yaml
+
+#       # Wait for Pods
+#       - name: Wait for Pods
+#         run: |
+#           kubectl wait --for=condition=Ready pod --all --timeout=600s
+
+#       # Verify Pods
+#       - name: Verify Pods
+#         run: kubectl get pods
+
+#       # Verify Services
+#       - name: Verify Services
+#         run: kubectl get svc
+
+#       # Get Application URL
+#       - name: Get Application URL
+#         id: app-url
+#         run: |
+#           URL=$(minikube service frontend-external --url)
+#           echo "Application URL: $URL"
+#           echo "BASE_URL=$URL" >> $GITHUB_ENV
+
+#       # Setup Node
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 22
+#           cache: npm
+#           cache-dependency-path: automation/package-lock.json
+
+#       # Install Dependencies
+#       - name: Install Dependencies
+#         working-directory: automation
+#         run: npm ci
+
+#       # Install Playwright Browsers
+#       - name: Install Playwright Browsers
+#         working-directory: automation
+#         run: npx playwright install --with-deps chromium
+
+#       # Create .env
+#       - name: Create .env
+#         working-directory: automation
+#         run: |
+#           cat <<EOF > .env
+#           BASE_URL=${{ env.BASE_URL }}
+#           BROWSER=chromium
+#           HEADLESS=true
+#           SCREENSHOT=only-on-failure
+#           VIDEO=retain-on-failure
+#           TRACE=retain-on-failure
+#           EOF
+
+#       # Show .env (Optional for debugging)
+#       - name: Show .env
+#         working-directory: automation
+#         run: cat .env
+
+#       # Run Playwright Tests
+#       - name: Run Playwright Tests
+#         working-directory: automation
+#         run: npx playwright test
+
+#       # Upload Playwright Report
+#       - name: Upload Playwright Report
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: playwright-report
+#           path: automation/playwright-report
+#           retention-days: 30
+
+#       # Upload Test Results
+#       - name: Upload Test Results
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: test-results
+#           path: automation/test-results
+#           retention-days: 30
+
+
+name: Playwright Kubernetes Chaos Tests
 
 on:
   push:
@@ -22,35 +140,69 @@ jobs:
         with:
           submodules: recursive
 
-      # Start Minikube
+      # Setup Minikube
       - name: Start Minikube
         uses: medyagh/setup-minikube@latest
 
       # Verify Cluster
       - name: Verify Cluster
-        run: kubectl get nodes
+        run: |
+          kubectl get nodes
+
+      # Install Helm
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      # Add Chaos Mesh Repository
+      - name: Add Chaos Mesh Helm Repository
+        run: |
+          helm repo add chaos-mesh https://charts.chaos-mesh.org
+          helm repo update
+
+      # Install Chaos Mesh
+      - name: Install Chaos Mesh
+        run: |
+          kubectl create namespace chaos-mesh --dry-run=client -o yaml | kubectl apply -f -
+
+          helm install chaos-mesh chaos-mesh/chaos-mesh \
+            --namespace chaos-mesh \
+            --set chaosDaemon.runtime=containerd \
+            --set chaosDaemon.socketPath=/run/containerd/containerd.sock
+
+      # Wait for Chaos Mesh
+      - name: Wait for Chaos Mesh
+        run: |
+          kubectl rollout status deployment/chaos-controller-manager \
+            -n chaos-mesh --timeout=300s
+
+      # Verify Chaos Mesh
+      - name: Verify Chaos Mesh
+        run: |
+          kubectl get pods -n chaos-mesh
+          kubectl get crd | grep chaos
 
       # Deploy Online Boutique
       - name: Deploy Online Boutique
         run: |
           kubectl apply -f app/online-boutique/release/kubernetes-manifests.yaml
 
-      # Wait for Pods
-      - name: Wait for Pods
+      # Wait for Application Pods
+      - name: Wait for Application Pods
         run: |
           kubectl wait --for=condition=Ready pod --all --timeout=600s
 
       # Verify Pods
       - name: Verify Pods
-        run: kubectl get pods
+        run: |
+          kubectl get pods
 
       # Verify Services
       - name: Verify Services
-        run: kubectl get svc
+        run: |
+          kubectl get svc
 
       # Get Application URL
       - name: Get Application URL
-        id: app-url
         run: |
           URL=$(minikube service frontend-external --url)
           echo "Application URL: $URL"
@@ -87,15 +239,21 @@ jobs:
           TRACE=retain-on-failure
           EOF
 
-      # Show .env (Optional for debugging)
+      # Display .env
       - name: Show .env
         working-directory: automation
         run: cat .env
 
+      # Verify Chaos Mesh CRDs
+      - name: Verify Chaos CRDs
+        run: |
+          kubectl get crd | grep chaos
+
       # Run Playwright Tests
       - name: Run Playwright Tests
         working-directory: automation
-        run: npx playwright test
+        run: |
+          npx playwright test
 
       # Upload Playwright Report
       - name: Upload Playwright Report
