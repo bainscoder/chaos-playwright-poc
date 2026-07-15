@@ -14,13 +14,20 @@ export class ChaosUtils {
     });
   }
 
-  static deleteChaos(fileName: string): void {
-    console.log(`Deleting Chaos: ${fileName}`);
+static deleteChaos(fileName: string): void {
+  console.log(`Deleting Chaos: ${fileName}`);
 
-    execSync(`kubectl delete -f "${this.getChaosFile(fileName)}"`, {
-      stdio: "inherit",
-    });
+  try {
+    execSync(
+      `kubectl delete -f "${ChaosUtils.getChaosFile(fileName)}" --ignore-not-found`,
+      {
+        stdio: "inherit",
+      }
+    );
+  } catch (error) {
+    console.warn(`Cleanup skipped for ${fileName}`);
   }
+}
 
   // ================= CPU Stress =================
 
