@@ -14,6 +14,8 @@ test.describe("Business Resilience - CPU Stress", () => {
       await home.verifyHomePageLoaded();
 
       ChaosUtils.applyNetworkDelay();
+      // Allow Chaos Mesh to inject the network delay
+      await ChaosUtils.wait(5);
 
       await home.openFirstProduct();
 
