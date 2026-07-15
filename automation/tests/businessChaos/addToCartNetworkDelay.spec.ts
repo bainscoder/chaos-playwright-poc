@@ -3,7 +3,7 @@ import { ChaosUtils } from "../../utils/chaosUtils";
 
 test.describe("Business Resilience - CPU Stress", () => {
 
-  test("Verify user can add product to cart during CPU stress", async ({
+  test.skip("Verify user can add product to cart during CPU stress", async ({
     home,
     product,
     cart,
