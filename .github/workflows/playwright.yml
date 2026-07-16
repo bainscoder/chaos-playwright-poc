@@ -253,7 +253,7 @@ jobs:
       - name: Run Playwright Tests
         working-directory: automation
         run: |
-          run: npx playwright test --reporter=list
+          npx playwright test --reporter=list
 
       # Debug Kubernetes State
       - name: Verify Chaos Resources
