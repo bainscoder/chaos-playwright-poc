@@ -255,6 +255,28 @@ jobs:
         run: |
           npx playwright test
 
+      # Debug Kubernetes State
+      - name: Verify Chaos Resources
+        if: always()
+        run: |
+         echo "========== Network Chaos =========="
+         kubectl get networkchaos -A || true
+
+         echo "========== Stress Chaos =========="
+         kubectl get stresschaos -A || true
+
+         echo "========== Pod Chaos =========="
+         kubectl get podchaos -A || true
+
+         echo "========== Network Delay Details =========="
+         kubectl describe networkchaos network-delay -n default || true
+
+         echo "========== Application Pods =========="
+         kubectl get pods -o wide
+
+         echo "========== Recent Events =========="
+         kubectl get events --sort-by=.metadata.creationTimestamp | tail -50
+
       # Upload Playwright Report
       - name: Upload Playwright Report
         if: always()
