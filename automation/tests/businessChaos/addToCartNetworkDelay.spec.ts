@@ -56,12 +56,14 @@ await product.addProductToCart();
 console.log("Step 8 - Cart Loaded");
 await cart.verifyCartPageLoaded();
 
-console.log("Step 9 - Cleanup");
-ChaosUtils.removeNetworkDelay();
+// console.log("Step 9 - Cleanup");
+// ChaosUtils.removeNetworkDelay();
 await cart.verifyProductAdded();
 
 } finally {
+console.log("Step 9 - Cleanup");  
 ChaosUtils.removeNetworkDelay();
+console.log("Step 10 - Cleanup Finished");
 }
 
   });
